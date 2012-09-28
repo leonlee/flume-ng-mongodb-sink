@@ -8,7 +8,7 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 2. Install latest Maven and build source by 'mvn package'
 3. Generate classpath by 'mvn dependency:build-classpath'
 4. Append classpath in $FLUME_HOME/conf/flume-env.sh
-5. Add the source definition according to **Configuration**
+5. Add the sink definition according to **Configuration**
 
 ## Configuration
 - - - 
@@ -17,7 +17,8 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	port: db port [27017]
 	username: db username []
 	password: db password []
-	model: single or dynamic, single mean all data will insert into the same collection, and dynamic means every event will specify cllection name by event header 'collection' [single]
+	model: single or dynamic, single mean all data will insert into the same collection,
+	    and dynamic means every event will specify cllection name by event header 'collection' [single]
 	db: db name [events]
 	collection: default collection name, will used in single model [events]
 	batch: batch size of insert opertion [100]
