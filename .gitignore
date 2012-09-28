@@ -1,1 +1,19 @@
-target/
+# Lines that start with '#' are comments.
+*~
+*.diff
+*#
+.classpath
+.project
+.settings
+bin/flume-env.sh
+conf/flume-site.xml
+bin/.settings
+.eclipse
+pmd_report.html
+*/bin
+target
+derby.log
+*.iml
+.idea/
+*.sublime-project
+*.sublime-workspace
