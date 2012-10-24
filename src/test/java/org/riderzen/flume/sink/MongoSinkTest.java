@@ -82,8 +82,8 @@ public class MongoSinkTest {
             channel.put(e);
             tx.commit();
             tx.close();
+            sink.process();
         }
-        sink.process();
         sink.stop();
 
         for (int i = 0; i < 10; i++) {
@@ -129,8 +129,8 @@ public class MongoSinkTest {
             channel.put(e);
             tx.commit();
             tx.close();
+            sink.process();
         }
-        sink.process();
         sink.stop();
 
         for (int i = 0; i < 10; i++) {
