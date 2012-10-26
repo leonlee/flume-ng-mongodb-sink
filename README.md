@@ -22,6 +22,8 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	db: db name [events]
 	collection: default collection name, will used in single model [events]
 	batch: batch size of insert opertion [100]
+	autoWrap: indicator of wrap the event body as a JSONObject that has one field [false]
+	wrapField: use with autoWrap, set the field name of JSONObject [log]
 
 ### flume.conf sample
 - - -

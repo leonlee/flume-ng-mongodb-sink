@@ -2,6 +2,7 @@ package org.riderzen.flume.sink;
 
 import com.mongodb.*;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.flume.*;
 import org.apache.flume.channel.MemoryChannel;
 import org.apache.flume.conf.Configurables;
@@ -227,5 +228,34 @@ public class MongoSinkTest {
         assertTrue(hit);
     }
 
+    @Test(groups = "dev")
+    public void autoWrapTest() throws EventDeliveryException {
+        ctx.put(MongoSink.AUTO_WRAP, Boolean.toString(true));
 
+        MongoSink sink = new MongoSink();
+        Configurables.configure(sink, ctx);
+
+        sink.setChannel(channel);
+        sink.start();
+
+        Transaction tx = channel.getTransaction();
+        tx.begin();
+        String msg = "2012/10/26 11:23:08 [error] 7289#0: *6430831 open() \"/usr/local/nginx/html/50x.html\" failed (2: No such file or directory), client: 10.160.105.161, server: sg15.redatoms.com, request: \"POST /mojo/ajax/embed HTTP/1.0\", upstream: \"fastcgi://unix:/tmp/php-fpm.sock:\", host: \"sg15.redatoms.com\", referrer: \"http://sg15.redatoms.com/mojo/mobile/package\"";
+
+        Event e = EventBuilder.withBody(msg.getBytes());
+        channel.put(e);
+        tx.commit();
+        tx.close();
+
+        sink.process();
+        sink.stop();
+
+        DB db = mongo.getDB("test_events");
+        DBCollection collection = db.getCollection("test_log");
+        DBCursor cursor = collection.find(new BasicDBObject(MongoSink.DEFAULT_WRAP_FIELD, msg));
+        assertTrue(cursor.hasNext());
+        DBObject dbObject = cursor.next();
+        assertNotNull(dbObject);
+        assertEquals(dbObject.get(MongoSink.DEFAULT_WRAP_FIELD), msg);
+    }
 }

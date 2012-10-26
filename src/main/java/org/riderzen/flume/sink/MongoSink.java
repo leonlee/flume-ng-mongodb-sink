@@ -32,12 +32,16 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String COLLECTION = "collection";
     public static final String NAME_PREFIX = "MongSink_";
     public static final String BATCH_SIZE = "batch";
+    public static final String AUTO_WRAP = "autoWrap";
+    private static final String WRAP_FIELD = "wrapField";
 
     public static final String DEFAULT_HOST = "localhost";
     public static final int DEFAULT_PORT = 27017;
     public static final String DEFAULT_DB = "events";
     public static final String DEFAULT_COLLECTION = "events";
     public static final int DEFAULT_BATCH = 100;
+    private static final Boolean DEFAULT_AUTO_WRAP = false;
+    public static final String DEFAULT_WRAP_FIELD = "log";
 
     private static AtomicInteger counter = new AtomicInteger();
 
@@ -52,6 +56,8 @@ public class MongoSink extends AbstractSink implements Configurable {
     private String dbName;
     private String collectionName;
     private int batchSize;
+    private boolean autoWrap;
+    private String wrapField;
 
     @Override
     public void configure(Context context) {
@@ -65,6 +71,9 @@ public class MongoSink extends AbstractSink implements Configurable {
         dbName = context.getString(DB_NAME, DEFAULT_DB);
         collectionName = context.getString(COLLECTION, DEFAULT_COLLECTION);
         batchSize = context.getInteger(BATCH_SIZE, DEFAULT_BATCH);
+        autoWrap = context.getBoolean(AUTO_WRAP, DEFAULT_AUTO_WRAP);
+        wrapField = context.getString(WRAP_FIELD, DEFAULT_WRAP_FIELD);
+
 
         logger.info("MongoSink {} context { host:{}, port:{}, username:{}, password:{}, model:{}, dbName:{}, collectionName:{}, batch: {} }",
                 new Object[]{getName(), host, port, username, password, model, dbName, collectionName, batchSize});
@@ -193,7 +202,12 @@ public class MongoSink extends AbstractSink implements Configurable {
             documents = new ArrayList<DBObject>(batchSize);
         }
 
-        DBObject eventJson = (DBObject) JSON.parse(new String(event.getBody()));
+        DBObject eventJson;
+        if (autoWrap) {
+            eventJson = new BasicDBObject(wrapField, new String(event.getBody()));
+        } else {
+            eventJson = (DBObject) JSON.parse(new String(event.getBody()));
+        }
         documents.add(eventJson);
 
         return documents;
