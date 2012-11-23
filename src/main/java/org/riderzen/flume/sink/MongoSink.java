@@ -183,9 +183,9 @@ public class MongoSink extends AbstractSink implements Configurable {
 
             tx.commit();
         } catch (Exception e) {
-            logger.error("can't process events", e);
+            logger.error("can't process events, drop it!", e);
             if (tx != null) {
-                tx.rollback();
+                tx.commit();// commit to drop bad event, otherwise it will enter dead loop.
             }
 
             throw new EventDeliveryException(e);
