@@ -22,6 +22,7 @@ import static org.testng.Assert.*;
  * Date: 12-9-12
  * Time: 下午3:31
  */
+@Test(singleThreaded = true)
 public class MongoSinkTest {
     private static Mongo mongo;
     public static final String DBNAME = "myDb";
@@ -54,6 +55,7 @@ public class MongoSinkTest {
     public static void tearDown() {
         mongo.dropDatabase(DBNAME);
         mongo.dropDatabase("test_events");
+        mongo.dropDatabase("dynamic_db");
         mongo.close();
     }
 
@@ -83,8 +85,8 @@ public class MongoSinkTest {
             channel.put(e);
             tx.commit();
             tx.close();
-            sink.process();
         }
+        sink.process();
         sink.stop();
 
         for (int i = 0; i < 10; i++) {
@@ -130,8 +132,8 @@ public class MongoSinkTest {
             channel.put(e);
             tx.commit();
             tx.close();
-            sink.process();
         }
+        sink.process();
         sink.stop();
 
         for (int i = 0; i < 10; i++) {
@@ -187,7 +189,7 @@ public class MongoSinkTest {
         assertEquals(dbObject.get("birthday"), msg.get("birthday"));
     }
 
-    @Test(groups = "dev")
+//    @Test(groups = "dev")
     public void dbTest() {
         DB db = mongo.getDB(DBNAME);
         db.getCollectionNames();
@@ -257,5 +259,54 @@ public class MongoSinkTest {
         DBObject dbObject = cursor.next();
         assertNotNull(dbObject);
         assertEquals(dbObject.get(MongoSink.DEFAULT_WRAP_FIELD), msg);
+    }
+
+    @Test(groups = "dev")
+    public void sinkDynamicDbTest() throws EventDeliveryException {
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        MongoSink sink = new MongoSink();
+        Configurables.configure(sink, ctx);
+
+        sink.setChannel(channel);
+        sink.start();
+
+        JSONObject msg = new JSONObject();
+        msg.put("age", 11);
+        msg.put("birthday", new Date().getTime());
+
+        Transaction tx;
+
+        for (int i = 0; i < 10; i++) {
+            tx = channel.getTransaction();
+            tx.begin();
+            msg.put("name", "test" + i);
+            JSONObject header = new JSONObject();
+            header.put(MongoSink.COLLECTION, "my_events");
+            header.put(MongoSink.DB_NAME, "dynamic_db");
+
+            Event e = EventBuilder.withBody(msg.toJSONString().getBytes(), header);
+            channel.put(e);
+            tx.commit();
+            tx.close();
+        }
+        sink.process();
+        sink.stop();
+
+        for (int i = 0; i < 10; i++) {
+            msg.put("name", "test" + i);
+
+            System.out.println("i = " + i);
+
+            DB db = mongo.getDB("dynamic_db");
+            DBCollection collection = db.getCollection("my_events");
+            DBCursor cursor = collection.find(new BasicDBObject(msg));
+            assertTrue(cursor.hasNext());
+            DBObject dbObject = cursor.next();
+            assertNotNull(dbObject);
+            assertEquals(dbObject.get("name"), msg.get("name"));
+            assertEquals(dbObject.get("age"), msg.get("age"));
+            assertEquals(dbObject.get("birthday"), msg.get("birthday"));
+        }
+
     }
 }

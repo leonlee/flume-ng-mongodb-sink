@@ -2,6 +2,7 @@ package org.riderzen.flume.sink;
 
 import com.mongodb.*;
 import com.mongodb.util.JSON;
+import org.apache.commons.lang.StringUtils;
 import org.apache.flume.*;
 import org.apache.flume.conf.Configurable;
 import org.apache.flume.sink.AbstractSink;
@@ -42,6 +43,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final int DEFAULT_BATCH = 100;
     private static final Boolean DEFAULT_AUTO_WRAP = false;
     public static final String DEFAULT_WRAP_FIELD = "log";
+    public static final char NAMESPACE_SEPARATOR = '.';
 
     private static AtomicInteger counter = new AtomicInteger();
 
@@ -114,13 +116,17 @@ public class MongoSink extends AbstractSink implements Configurable {
             return;
         }
 
-        for (String collectionName : eventMap.keySet()) {
-            List<DBObject> docs = eventMap.get(collectionName);
+        for (String eventCollection : eventMap.keySet()) {
+            List<DBObject> docs = eventMap.get(eventCollection);
             if (logger.isDebugEnabled()) {
-                logger.debug("collection: {}, length: {}", collectionName, docs.size());
+                logger.debug("collection: {}, length: {}", eventCollection, docs.size());
             }
+            int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
+            String eventDb = eventCollection.substring(0, separatorIndex);
+            String collectionName = eventCollection.substring(separatorIndex + 1);
+
             //Warning: please change the WriteConcern level if you need high datum consistence.
-            CommandResult result = db.getCollection(collectionName).insert(docs, WriteConcern.NORMAL).getLastError();
+            CommandResult result = mongo.getDB(eventDb).getCollection(collectionName).insert(docs, WriteConcern.NORMAL).getLastError();
             if (result.ok()) {
                 String errorMessage = result.getErrorMessage();
                 if (errorMessage != null) {
@@ -150,25 +156,34 @@ public class MongoSink extends AbstractSink implements Configurable {
                     status = Status.BACKOFF;
                     break;
                 } else {
+                    String eventCollection;
                     switch (model) {
                         case single:
-                            if (!eventMap.containsKey(collectionName)) {
-                                eventMap.put(collectionName, new ArrayList<DBObject>());
+                            eventCollection = dbName + NAMESPACE_SEPARATOR + collectionName;
+                            if (!eventMap.containsKey(eventCollection)) {
+                                eventMap.put(eventCollection, new ArrayList<DBObject>());
                             }
 
-                            List<DBObject> docs = eventMap.get(collectionName);
+                            List<DBObject> docs = eventMap.get(eventCollection);
                             addEventToList(docs, event);
 
                             break;
                         case dynamic:
                             Map<String, String> headers = event.getHeaders();
-                            String dynamicCollection = headers.get(COLLECTION);
+                            String eventDb = headers.get(DB_NAME);
+                            eventCollection = headers.get(COLLECTION);
 
-                            if (!eventMap.containsKey(dynamicCollection)) {
-                                eventMap.put(dynamicCollection, new ArrayList<DBObject>());
+                            if (!StringUtils.isEmpty(eventDb)) {
+                                eventCollection = eventDb + NAMESPACE_SEPARATOR + eventCollection;
+                            } else {
+                                eventCollection = dbName + NAMESPACE_SEPARATOR + eventCollection;
                             }
 
-                            List<DBObject> documents = eventMap.get(dynamicCollection);
+                            if (!eventMap.containsKey(eventCollection)) {
+                                eventMap.put(eventCollection, new ArrayList<DBObject>());
+                            }
+
+                            List<DBObject> documents = eventMap.get(eventCollection);
                             addEventToList(documents, event);
 
                             break;
@@ -203,10 +218,16 @@ public class MongoSink extends AbstractSink implements Configurable {
         }
 
         DBObject eventJson;
+        byte[] body = event.getBody();
         if (autoWrap) {
-            eventJson = new BasicDBObject(wrapField, new String(event.getBody()));
+            eventJson = new BasicDBObject(wrapField, new String(body));
         } else {
-            eventJson = (DBObject) JSON.parse(new String(event.getBody()));
+            try {
+                eventJson = (DBObject) JSON.parse(new String(body));
+            } catch (Exception e) {
+                logger.error("Can't parse events: " + new String(body), e);
+                return documents;
+            }
         }
         documents.add(eventJson);
 
