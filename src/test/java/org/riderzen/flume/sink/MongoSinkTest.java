@@ -2,13 +2,13 @@ package org.riderzen.flume.sink;
 
 import com.mongodb.*;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.flume.*;
 import org.apache.flume.channel.MemoryChannel;
 import org.apache.flume.conf.Configurables;
 import org.apache.flume.event.EventBuilder;
 import org.json.simple.JSONObject;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -22,7 +22,7 @@ import static org.testng.Assert.*;
  * Date: 12-9-12
  * Time: 下午3:31
  */
-@Test(singleThreaded = true)
+@Test(singleThreaded = true, threadPoolSize = 1)
 public class MongoSinkTest {
     private static Mongo mongo;
     public static final String DBNAME = "myDb";
@@ -53,10 +53,15 @@ public class MongoSinkTest {
 
     @AfterClass(groups = {"dev"})
     public static void tearDown() {
+        mongo.close();
+    }
+
+    @AfterMethod(groups = {"dev"})
+    public static void cleanDb() {
         mongo.dropDatabase(DBNAME);
         mongo.dropDatabase("test_events");
         mongo.dropDatabase("dynamic_db");
-        mongo.close();
+
     }
 
     @Test(groups = "dev", invocationCount = 1)
@@ -189,7 +194,7 @@ public class MongoSinkTest {
         assertEquals(dbObject.get("birthday"), msg.get("birthday"));
     }
 
-//    @Test(groups = "dev")
+    @Test(groups = "dev")
     public void dbTest() {
         DB db = mongo.getDB(DBNAME);
         db.getCollectionNames();
@@ -230,9 +235,10 @@ public class MongoSinkTest {
         assertTrue(hit);
     }
 
-    @Test(groups = "dev")
+//    @Test(groups = "dev")
     public void autoWrapTest() throws EventDeliveryException {
         ctx.put(MongoSink.AUTO_WRAP, Boolean.toString(true));
+        ctx.put(MongoSink.DB_NAME, "test_wrap");
 
         MongoSink sink = new MongoSink();
         Configurables.configure(sink, ctx);
@@ -252,13 +258,14 @@ public class MongoSinkTest {
         sink.process();
         sink.stop();
 
-        DB db = mongo.getDB("test_events");
+        DB db = mongo.getDB("test_wrap");
         DBCollection collection = db.getCollection("test_log");
         DBCursor cursor = collection.find(new BasicDBObject(MongoSink.DEFAULT_WRAP_FIELD, msg));
         assertTrue(cursor.hasNext());
         DBObject dbObject = cursor.next();
         assertNotNull(dbObject);
         assertEquals(dbObject.get(MongoSink.DEFAULT_WRAP_FIELD), msg);
+        mongo.dropDatabase("test_wrap");
     }
 
     @Test(groups = "dev")

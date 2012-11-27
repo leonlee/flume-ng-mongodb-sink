@@ -50,3 +50,8 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	agent2.channels.channel2.capacity = 1000000
 	agent2.channels.channel2.transactionCapacity = 800
 	agent2.channels.channel2.keep-alive = 3
+
+### Event Headers
+    The sink supports some headers in dynamic model:
+    'db': db name
+    'collection' : collection name

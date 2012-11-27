@@ -156,40 +156,7 @@ public class MongoSink extends AbstractSink implements Configurable {
                     status = Status.BACKOFF;
                     break;
                 } else {
-                    String eventCollection;
-                    switch (model) {
-                        case single:
-                            eventCollection = dbName + NAMESPACE_SEPARATOR + collectionName;
-                            if (!eventMap.containsKey(eventCollection)) {
-                                eventMap.put(eventCollection, new ArrayList<DBObject>());
-                            }
-
-                            List<DBObject> docs = eventMap.get(eventCollection);
-                            addEventToList(docs, event);
-
-                            break;
-                        case dynamic:
-                            Map<String, String> headers = event.getHeaders();
-                            String eventDb = headers.get(DB_NAME);
-                            eventCollection = headers.get(COLLECTION);
-
-                            if (!StringUtils.isEmpty(eventDb)) {
-                                eventCollection = eventDb + NAMESPACE_SEPARATOR + eventCollection;
-                            } else {
-                                eventCollection = dbName + NAMESPACE_SEPARATOR + eventCollection;
-                            }
-
-                            if (!eventMap.containsKey(eventCollection)) {
-                                eventMap.put(eventCollection, new ArrayList<DBObject>());
-                            }
-
-                            List<DBObject> documents = eventMap.get(eventCollection);
-                            addEventToList(documents, event);
-
-                            break;
-                        default:
-                            logger.error("can't support model: {}, please check configuration.", model);
-                    }
+                    processEvent(eventMap, event);
                 }
             }
             if (!eventMap.isEmpty()) {
@@ -210,6 +177,52 @@ public class MongoSink extends AbstractSink implements Configurable {
             }
         }
         return status;
+    }
+
+    private void processEvent(Map<String, List<DBObject>> eventMap, Event event) {
+        switch (model) {
+            case single:
+                putSingleEvent(eventMap, event);
+
+                break;
+            case dynamic:
+                putDynamicEvent(eventMap, event);
+
+                break;
+            default:
+                logger.error("can't support model: {}, please check configuration.", model);
+        }
+    }
+
+    private void putDynamicEvent(Map<String, List<DBObject>> eventMap, Event event) {
+        String eventCollection;
+        Map<String, String> headers = event.getHeaders();
+        String eventDb = headers.get(DB_NAME);
+        eventCollection = headers.get(COLLECTION);
+
+        if (!StringUtils.isEmpty(eventDb)) {
+            eventCollection = eventDb + NAMESPACE_SEPARATOR + eventCollection;
+        } else {
+            eventCollection = dbName + NAMESPACE_SEPARATOR + eventCollection;
+        }
+
+        if (!eventMap.containsKey(eventCollection)) {
+            eventMap.put(eventCollection, new ArrayList<DBObject>());
+        }
+
+        List<DBObject> documents = eventMap.get(eventCollection);
+        addEventToList(documents, event);
+    }
+
+    private void putSingleEvent(Map<String, List<DBObject>> eventMap, Event event) {
+        String eventCollection;
+        eventCollection = dbName + NAMESPACE_SEPARATOR + collectionName;
+        if (!eventMap.containsKey(eventCollection)) {
+            eventMap.put(eventCollection, new ArrayList<DBObject>());
+        }
+
+        List<DBObject> docs = eventMap.get(eventCollection);
+        addEventToList(docs, event);
     }
 
     private List<DBObject> addEventToList(List<DBObject> documents, Event event) {
