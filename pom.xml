@@ -14,11 +14,12 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.riderzen.flume</groupId>
     <artifactId>flume-ng-mongodb-sink</artifactId>
-    <version>0.0.1</version>
+    <version>1.0.0</version>
     <name>Flume NG MongoDB sink</name>
 
     <properties>
-        <mongo-java.version>2.9.0</mongo-java.version>
+        <mongo-java.version>2.10.1</mongo-java.version>
+        <flume.version>1.3.0</flume.version>
     </properties>
 
     <dependencies>
@@ -26,13 +27,13 @@
         <dependency>
             <groupId>org.apache.flume</groupId>
             <artifactId>flume-ng-sdk</artifactId>
-            <version>1.2.0</version>
+            <version>${flume.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.flume</groupId>
             <artifactId>flume-ng-core</artifactId>
-            <version>1.2.0</version>
+            <version>${flume.version}</version>
         </dependency>
 
         <dependency>
@@ -78,6 +79,16 @@
                     <groups>unit</groups>
                 </configuration>
             </plugin>
+<plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.0</version>
+        <configuration>
+          <verbose>true</verbose>
+          <fork>true</fork>
+          <compilerVersion>1.5</compilerVersion>
+        </configuration>
+      </plugin>
         </plugins>
     </build>
 
