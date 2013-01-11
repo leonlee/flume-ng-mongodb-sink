@@ -24,6 +24,9 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	batch: batch size of insert opertion [100]
 	autoWrap: indicator of wrap the event body as a JSONObject that has one field [false]
 	wrapField: use with autoWrap, set the field name of JSONObject [log]
+	timestampField: date type field that record the creating time of record,
+	    it can be a existing filed name that the sink will convert this filed to date type,
+	    or it's a new filed name that the sink will create it automatically []
 
 ### flume.conf sample
 - - -

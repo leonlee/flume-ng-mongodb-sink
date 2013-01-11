@@ -2,17 +2,16 @@ package org.riderzen.flume.sink;
 
 import com.mongodb.*;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.apache.flume.*;
 import org.apache.flume.channel.MemoryChannel;
 import org.apache.flume.conf.Configurables;
 import org.apache.flume.event.EventBuilder;
 import org.json.simple.JSONObject;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.net.UnknownHostException;
+import java.text.ParseException;
 import java.util.*;
 
 import static org.testng.Assert.*;
@@ -31,7 +30,7 @@ public class MongoSinkTest {
     private static Channel channel;
 
 
-    @BeforeClass(groups = {"dev"})
+    @BeforeMethod(groups = {"dev"})
     public static void setup() throws UnknownHostException {
         mongo = new Mongo("localhost", 27017);
 
@@ -51,17 +50,12 @@ public class MongoSinkTest {
         Configurables.configure(channel, channelCtx);
     }
 
-    @AfterClass(groups = {"dev"})
-    public static void tearDown() {
-        mongo.close();
-    }
-
     @AfterMethod(groups = {"dev"})
-    public static void cleanDb() {
+    public static void tearDown() {
         mongo.dropDatabase(DBNAME);
         mongo.dropDatabase("test_events");
         mongo.dropDatabase("dynamic_db");
-
+        mongo.close();
     }
 
     @Test(groups = "dev", invocationCount = 1)
@@ -235,7 +229,7 @@ public class MongoSinkTest {
         assertTrue(hit);
     }
 
-//    @Test(groups = "dev")
+    @Test(groups = "dev")
     public void autoWrapTest() throws EventDeliveryException {
         ctx.put(MongoSink.AUTO_WRAP, Boolean.toString(true));
         ctx.put(MongoSink.DB_NAME, "test_wrap");
@@ -313,6 +307,114 @@ public class MongoSinkTest {
             assertEquals(dbObject.get("name"), msg.get("name"));
             assertEquals(dbObject.get("age"), msg.get("age"));
             assertEquals(dbObject.get("birthday"), msg.get("birthday"));
+        }
+
+    }
+
+    @Test(groups = "dev")
+    public void timestampNewFieldTest() throws EventDeliveryException {
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        String tsField = "createdOn";
+        ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
+        MongoSink sink = new MongoSink();
+        Configurables.configure(sink, ctx);
+
+        sink.setChannel(channel);
+        sink.start();
+
+        JSONObject msg = new JSONObject();
+        msg.put("age", 11);
+        msg.put("birthday", new Date().getTime());
+
+        Transaction tx;
+
+        for (int i = 0; i < 10; i++) {
+            tx = channel.getTransaction();
+            tx.begin();
+            msg.put("name", "test" + i);
+            JSONObject header = new JSONObject();
+            header.put(MongoSink.COLLECTION, "my_events");
+            header.put(MongoSink.DB_NAME, "dynamic_db");
+
+            Event e = EventBuilder.withBody(msg.toJSONString().getBytes(), header);
+            channel.put(e);
+            tx.commit();
+            tx.close();
+        }
+        sink.process();
+        sink.stop();
+
+        for (int i = 0; i < 10; i++) {
+            msg.put("name", "test" + i);
+
+            System.out.println("i = " + i);
+
+            DB db = mongo.getDB("dynamic_db");
+            DBCollection collection = db.getCollection("my_events");
+            DBCursor cursor = collection.find(new BasicDBObject(msg));
+            assertTrue(cursor.hasNext());
+            DBObject dbObject = cursor.next();
+            assertNotNull(dbObject);
+            assertEquals(dbObject.get("name"), msg.get("name"));
+            assertEquals(dbObject.get("age"), msg.get("age"));
+            assertEquals(dbObject.get("birthday"), msg.get("birthday"));
+            assertTrue(dbObject.get(tsField) instanceof Date);
+        }
+
+    }
+
+    @Test(groups = "dev")
+    public void timestampExistingFieldTest() throws EventDeliveryException, ParseException {
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        String tsField = "createdOn";
+        ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
+        MongoSink sink = new MongoSink();
+        Configurables.configure(sink, ctx);
+
+        sink.setChannel(channel);
+        sink.start();
+
+        JSONObject msg = new JSONObject();
+        msg.put("age", 11);
+        msg.put("birthday", new Date().getTime());
+        String dateText = "2013-01-07T17:53:15+08:00";
+        msg.put(tsField, dateText);
+
+        Transaction tx;
+
+        for (int i = 0; i < 10; i++) {
+            tx = channel.getTransaction();
+            tx.begin();
+            msg.put("name", "test" + i);
+            JSONObject header = new JSONObject();
+            header.put(MongoSink.COLLECTION, "my_events");
+            header.put(MongoSink.DB_NAME, "dynamic_db");
+
+            Event e = EventBuilder.withBody(msg.toJSONString().getBytes(), header);
+            channel.put(e);
+            tx.commit();
+            tx.close();
+        }
+        sink.process();
+        sink.stop();
+
+        msg.put(tsField, MongoSink.dateTimeFormatter.parseDateTime(dateText).toDate());
+        for (int i = 0; i < 10; i++) {
+            msg.put("name", "test" + i);
+
+            System.out.println("i = " + i);
+
+            DB db = mongo.getDB("dynamic_db");
+            DBCollection collection = db.getCollection("my_events");
+            DBCursor cursor = collection.find(new BasicDBObject(msg));
+            assertTrue(cursor.hasNext());
+            DBObject dbObject = cursor.next();
+            assertNotNull(dbObject);
+            assertEquals(dbObject.get("name"), msg.get("name"));
+            assertEquals(dbObject.get("age"), msg.get("age"));
+            assertEquals(dbObject.get("birthday"), msg.get("birthday"));
+            assertTrue(dbObject.get(tsField) instanceof Date);
+            System.out.println("ts = " + dbObject.get(tsField));
         }
 
     }

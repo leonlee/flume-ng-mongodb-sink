@@ -3,17 +3,19 @@ package org.riderzen.flume.sink;
 import com.mongodb.*;
 import com.mongodb.util.JSON;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.apache.flume.*;
 import org.apache.flume.conf.Configurable;
 import org.apache.flume.sink.AbstractSink;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.DateTimeFormatterBuilder;
+import org.joda.time.format.DateTimeParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -23,6 +25,28 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MongoSink extends AbstractSink implements Configurable {
     private static Logger logger = LoggerFactory.getLogger(MongoSink.class);
+
+    private static DateTimeParser[] parsers = {
+            DateTimeFormat.forPattern("yyyy-MM-dd").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss Z").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS Z").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssz").getParser(),
+            DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss.SSSz").getParser(),
+    };
+    public static DateTimeFormatter dateTimeFormatter = new DateTimeFormatterBuilder().append(null, parsers).toFormatter();
+
+    public static final String[] DATE_PATTERNS = new String[]{
+            "yyyy-MM-dd",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss.SSS",
+            "yyyy-MM-dd HH:mm:ss.SSS Z",
+            "yyyy-MM-dd HH:mm:ss Z",
+            "yyyy-MM-dd'T'HH:mm:ssZ"
+    };
 
     public static final String HOST = "host";
     public static final String PORT = "port";
@@ -34,7 +58,8 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String NAME_PREFIX = "MongSink_";
     public static final String BATCH_SIZE = "batch";
     public static final String AUTO_WRAP = "autoWrap";
-    private static final String WRAP_FIELD = "wrapField";
+    public static final String WRAP_FIELD = "wrapField";
+    public static final String TIMESTAMP_FIELD = "timestampField";
 
     public static final String DEFAULT_HOST = "localhost";
     public static final int DEFAULT_PORT = 27017;
@@ -43,6 +68,8 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final int DEFAULT_BATCH = 100;
     private static final Boolean DEFAULT_AUTO_WRAP = false;
     public static final String DEFAULT_WRAP_FIELD = "log";
+    public static final String DEFAULT_TIMESTAMP_FIELD = null;
+
     public static final char NAMESPACE_SEPARATOR = '.';
 
     private static AtomicInteger counter = new AtomicInteger();
@@ -60,6 +87,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     private int batchSize;
     private boolean autoWrap;
     private String wrapField;
+    private String timestampField;
 
     @Override
     public void configure(Context context) {
@@ -75,10 +103,11 @@ public class MongoSink extends AbstractSink implements Configurable {
         batchSize = context.getInteger(BATCH_SIZE, DEFAULT_BATCH);
         autoWrap = context.getBoolean(AUTO_WRAP, DEFAULT_AUTO_WRAP);
         wrapField = context.getString(WRAP_FIELD, DEFAULT_WRAP_FIELD);
+        timestampField = context.getString(TIMESTAMP_FIELD, DEFAULT_TIMESTAMP_FIELD);
 
 
-        logger.info("MongoSink {} context { host:{}, port:{}, username:{}, password:{}, model:{}, dbName:{}, collectionName:{}, batch: {} }",
-                new Object[]{getName(), host, port, username, password, model, dbName, collectionName, batchSize});
+        logger.info("MongoSink {} context { host:{}, port:{}, username:{}, password:{}, model:{}, dbName:{}, collectionName:{}, batch: {}, autoWrap: {}, wrapField: {}, timestampField: {} }",
+                new Object[]{getName(), host, port, username, password, model, dbName, collectionName, batchSize, autoWrap, wrapField, timestampField});
     }
 
     @Override
@@ -242,6 +271,25 @@ public class MongoSink extends AbstractSink implements Configurable {
                 return documents;
             }
         }
+
+        if (timestampField != null) {
+            Date timestamp;
+            if (eventJson.containsField(timestampField)) {
+                try {
+                    String dateText = (String) eventJson.get(timestampField);
+                    timestamp = dateTimeFormatter.parseDateTime(dateText).toDate();
+                    eventJson.removeField(timestampField);
+                } catch (Exception e) {
+                    logger.error("can't parse date ", e);
+
+                    timestamp = new Date();
+                }
+            } else {
+                timestamp = new Date();
+            }
+            eventJson.put(timestampField, timestamp);
+        }
+
         documents.add(eventJson);
 
         return documents;
