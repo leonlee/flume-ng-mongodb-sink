@@ -27,6 +27,16 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	timestampField: date type field that record the creating time of record,
 	    it can be a existing filed name that the sink will convert this filed to date type,
 	    or it's a new filed name that the sink will create it automatically []
+        the supported date pattern as follows:
+            "yyyy-MM-dd"
+            "yyyy-MM-dd HH:mm:ss"
+            "yyyy-MM-dd HH:mm:ss.SSS"
+            "yyyy-MM-dd HH:mm:ss Z"
+            "yyyy-MM-dd HH:mm:ss.SSS Z"
+            "yyyy-MM-dd'T'HH:mm:ssZ"
+            "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+            "yyyy-MM-dd'T'HH:mm:ssz"
+            "yyyy-MM-dd'T'HH:mm:ss.SSSz"
 
 ### flume.conf sample
 - - -
