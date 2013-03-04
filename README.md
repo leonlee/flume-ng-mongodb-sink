@@ -1,7 +1,10 @@
 flume-ng-mongodb-sink
 =============
 Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
-Download: https://github.com/leonlee/flume-ng-mongodb-sink/blob/master/flum-ng-mongodb-dist-10.0.tar.bz2
+
+Download:
+
+https://github.com/leonlee/flume-ng-mongodb-sink/raw/master/flum-ng-mongodb-dist-10.0.tar.bz2
 
 ## Getting Started
 - - -
