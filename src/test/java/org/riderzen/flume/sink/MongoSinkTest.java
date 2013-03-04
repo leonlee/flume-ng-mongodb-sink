@@ -377,7 +377,7 @@ public class MongoSinkTest {
         JSONObject msg = new JSONObject();
         msg.put("age", 11);
         msg.put("birthday", new Date().getTime());
-        String dateText = "2013-01-07T17:53:15+08:00";
+        String dateText = "2013-02-19T14:20:53+08:00";
         msg.put(tsField, dateText);
 
         Transaction tx;
