@@ -50,6 +50,7 @@ public class MongoSink extends AbstractSink implements Configurable {
 
     public static final String HOST = "host";
     public static final String PORT = "port";
+    public static final String AUTHENTICATION_ENABLED = "authentication_enabled";
     public static final String USERNAME = "username";
     public static final String PASSWORD = "password";
     public static final String MODEL = "model";
@@ -61,6 +62,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String WRAP_FIELD = "wrapField";
     public static final String TIMESTAMP_FIELD = "timestampField";
 
+    public static final boolean DEFAULT_AUTHENTICATION_ENABLED = false;
     public static final String DEFAULT_HOST = "localhost";
     public static final int DEFAULT_PORT = 27017;
     public static final String DEFAULT_DB = "events";
@@ -79,6 +81,7 @@ public class MongoSink extends AbstractSink implements Configurable {
 
     private String host;
     private int port;
+    private boolean authentication_enabled;
     private String username;
     private String password;
     private CollectionModel model;
@@ -95,8 +98,15 @@ public class MongoSink extends AbstractSink implements Configurable {
 
         host = context.getString(HOST, DEFAULT_HOST);
         port = context.getInteger(PORT, DEFAULT_PORT);
-        username = context.getString(USERNAME);
-        password = context.getString(PASSWORD);
+        authentication_enabled = context.getBoolean(AUTHENTICATION_ENABLED, DEFAULT_AUTHENTICATION_ENABLED);
+        if (authentication_enabled) {
+            username = context.getString(USERNAME);
+            password = context.getString(PASSWORD);
+        }
+        else {
+            username = "";
+            password = "";
+        }
         model = CollectionModel.valueOf(context.getString(MODEL, CollectionModel.single.name()));
         dbName = context.getString(DB_NAME, DEFAULT_DB);
         collectionName = context.getString(COLLECTION, DEFAULT_COLLECTION);
@@ -104,23 +114,30 @@ public class MongoSink extends AbstractSink implements Configurable {
         autoWrap = context.getBoolean(AUTO_WRAP, DEFAULT_AUTO_WRAP);
         wrapField = context.getString(WRAP_FIELD, DEFAULT_WRAP_FIELD);
         timestampField = context.getString(TIMESTAMP_FIELD, DEFAULT_TIMESTAMP_FIELD);
-
-
-        logger.info("MongoSink {} context { host:{}, port:{}, username:{}, password:{}, model:{}, dbName:{}, collectionName:{}, batch: {}, autoWrap: {}, wrapField: {}, timestampField: {} }",
-                new Object[]{getName(), host, port, username, password, model, dbName, collectionName, batchSize, autoWrap, wrapField, timestampField});
+        logger.info("MongoSink {} context { host:{}, port:{}, authentication_enabled:{}, username:{}, password:{}, model:{}, dbName:{}, collectionName:{}, batch: {}, autoWrap: {}, wrapField: {}, timestampField: {} }",
+                new Object[]{getName(), host, port, authentication_enabled, username, password, model, dbName, collectionName, batchSize, autoWrap, wrapField, timestampField});
     }
 
     @Override
     public synchronized void start() {
         logger.info("Starting {}...", getName());
-
         try {
             mongo = new Mongo(host, port);
             db = mongo.getDB(dbName);
         } catch (UnknownHostException e) {
             logger.error("Can't connect to mongoDB", e);
+            return;
         }
-
+        if (authentication_enabled) {
+            boolean result = db.authenticate(username, password.toCharArray());
+            if (result) {
+                logger.info("Authentication attempt successful.");
+            }
+            else {
+                logger.error("CRITICAL FAILURE: Unable to authenticate. Check username and Password, or use another unauthenticated DB. Not starting MongoDB sink.\n");
+                return;
+            }
+        }
         super.start();
         logger.info("Started {}.", getName());
     }
@@ -155,16 +172,24 @@ public class MongoSink extends AbstractSink implements Configurable {
             String collectionName = eventCollection.substring(separatorIndex + 1);
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
-            CommandResult result = mongo.getDB(eventDb).getCollection(collectionName).insert(docs, WriteConcern.NORMAL).getLastError();
+            DB db = mongo.getDB(eventDb);
+            if(authentication_enabled) {
+                boolean authResult = db.authenticate(username, password.toCharArray());
+                if (authResult == false) {
+                    logger.error("Failed to authenticate user: " + username + " with password: " + password + ". Unable to write events.");
+                    return;
+                }
+            }
+            CommandResult result = db.getCollection(collectionName).insert(docs, WriteConcern.NORMAL).getLastError();
             if (result.ok()) {
                 String errorMessage = result.getErrorMessage();
                 if (errorMessage != null) {
                     logger.error("can't insert documents with error: {} ", errorMessage);
                     logger.error("with exception", result.getException());
-
                     throw new MongoException(errorMessage);
                 }
-            } else {
+            }
+            else {
                 logger.error("can't get last error");
             }
         }
