@@ -3,7 +3,6 @@ package org.riderzen.flume.sink;
 import com.mongodb.*;
 import com.mongodb.util.JSON;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DateUtils;
 import org.apache.flume.*;
 import org.apache.flume.conf.Configurable;
 import org.apache.flume.sink.AbstractSink;
@@ -39,18 +38,9 @@ public class MongoSink extends AbstractSink implements Configurable {
     };
     public static DateTimeFormatter dateTimeFormatter = new DateTimeFormatterBuilder().append(null, parsers).toFormatter();
 
-    public static final String[] DATE_PATTERNS = new String[]{
-            "yyyy-MM-dd",
-            "yyyy-MM-dd HH:mm:ss",
-            "yyyy-MM-dd HH:mm:ss.SSS",
-            "yyyy-MM-dd HH:mm:ss.SSS Z",
-            "yyyy-MM-dd HH:mm:ss Z",
-            "yyyy-MM-dd'T'HH:mm:ssZ"
-    };
-
     public static final String HOST = "host";
     public static final String PORT = "port";
-    public static final String AUTHENTICATION_ENABLED = "authentication_enabled";
+    public static final String AUTHENTICATION_ENABLED = "authenticationEnabled";
     public static final String USERNAME = "username";
     public static final String PASSWORD = "password";
     public static final String MODEL = "model";
@@ -102,8 +92,7 @@ public class MongoSink extends AbstractSink implements Configurable {
         if (authentication_enabled) {
             username = context.getString(USERNAME);
             password = context.getString(PASSWORD);
-        }
-        else {
+        } else {
             username = "";
             password = "";
         }
@@ -132,8 +121,7 @@ public class MongoSink extends AbstractSink implements Configurable {
             boolean result = db.authenticate(username, password.toCharArray());
             if (result) {
                 logger.info("Authentication attempt successful.");
-            }
-            else {
+            } else {
                 logger.error("CRITICAL FAILURE: Unable to authenticate. Check username and Password, or use another unauthenticated DB. Not starting MongoDB sink.\n");
                 return;
             }
@@ -173,9 +161,9 @@ public class MongoSink extends AbstractSink implements Configurable {
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
             DB db = mongo.getDB(eventDb);
-            if(authentication_enabled) {
+            if (authentication_enabled) {
                 boolean authResult = db.authenticate(username, password.toCharArray());
-                if (authResult == false) {
+                if (!authResult) {
                     logger.error("Failed to authenticate user: " + username + " with password: " + password + ". Unable to write events.");
                     return;
                 }
@@ -188,8 +176,7 @@ public class MongoSink extends AbstractSink implements Configurable {
                     logger.error("with exception", result.getException());
                     throw new MongoException(errorMessage);
                 }
-            }
-            else {
+            } else {
                 logger.error("can't get last error");
             }
         }
