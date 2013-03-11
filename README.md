@@ -41,7 +41,7 @@ https://github.com/leonlee/flume-ng-mongodb-sink/raw/master/flum-ng-mongodb-dist
             "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
             "yyyy-MM-dd'T'HH:mm:ssz"
             "yyyy-MM-dd'T'HH:mm:ss.SSSz"
-    authenticationEnabled: indicator of login method, true means login by username/password, false means login without authentication [false]
+    authenticationEnabled: true means login by username/password, false means login without authentication [false]
     username: required when "authenticationEnabled" is true []
     password: required when "authenticationEnabled" is true []
 
