@@ -51,6 +51,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String AUTO_WRAP = "autoWrap";
     public static final String WRAP_FIELD = "wrapField";
     public static final String TIMESTAMP_FIELD = "timestampField";
+    public static final String OPERATION = "op";
 
     public static final boolean DEFAULT_AUTHENTICATION_ENABLED = false;
     public static final String DEFAULT_HOST = "localhost";
@@ -61,8 +62,8 @@ public class MongoSink extends AbstractSink implements Configurable {
     private static final Boolean DEFAULT_AUTO_WRAP = false;
     public static final String DEFAULT_WRAP_FIELD = "log";
     public static final String DEFAULT_TIMESTAMP_FIELD = null;
-
     public static final char NAMESPACE_SEPARATOR = '.';
+    public static final String OP_UPSERT = "upsert";
 
     private static AtomicInteger counter = new AtomicInteger();
 
@@ -187,6 +188,7 @@ public class MongoSink extends AbstractSink implements Configurable {
         Channel channel = getChannel();
         Transaction tx = null;
         Map<String, List<DBObject>> eventMap = new HashMap<String, List<DBObject>>();
+        Map<String, List<DBObject>> upsertMap = new HashMap<String, List<DBObject>>();
         try {
             tx = channel.getTransaction();
             tx.begin();
@@ -197,11 +199,24 @@ public class MongoSink extends AbstractSink implements Configurable {
                     status = Status.BACKOFF;
                     break;
                 } else {
-                    processEvent(eventMap, event);
+                    String operation = event.getHeaders().get(OPERATION);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("event operation is {}", operation);
+                    }
+                    if (OP_UPSERT.equalsIgnoreCase(operation)) {
+                        processEvent(upsertMap, event);
+                    } else if (StringUtils.isNotBlank(operation)) {
+                        logger.error("non-supports operation {}", operation);
+                    } else {
+                        processEvent(eventMap, event);
+                    }
                 }
             }
             if (!eventMap.isEmpty()) {
                 saveEvents(eventMap);
+            }
+            if (!upsertMap.isEmpty()) {
+                doUpsert(upsertMap);
             }
 
             tx.commit();
@@ -218,6 +233,46 @@ public class MongoSink extends AbstractSink implements Configurable {
             }
         }
         return status;
+    }
+
+    private void doUpsert(Map<String, List<DBObject>> eventMap) {
+        if (eventMap.isEmpty()) {
+            logger.debug("eventMap is empty");
+            return;
+        }
+
+        for (String eventCollection : eventMap.keySet()) {
+            List<DBObject> docs = eventMap.get(eventCollection);
+            if (logger.isDebugEnabled()) {
+                logger.debug("collection: {}, length: {}", eventCollection, docs.size());
+            }
+            int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
+            String eventDb = eventCollection.substring(0, separatorIndex);
+            String collectionName = eventCollection.substring(separatorIndex + 1);
+
+            //Warning: please change the WriteConcern level if you need high datum consistence.
+            DB db = mongo.getDB(eventDb);
+            if (authentication_enabled) {
+                boolean authResult = db.authenticate(username, password.toCharArray());
+                if (!authResult) {
+                    logger.error("Failed to authenticate user: " + username + " with password: " + password + ". Unable to write events.");
+                    return;
+                }
+            }
+            for (DBObject doc : docs) {
+                CommandResult result = db.getCollection(collectionName).update(doc, doc, true, false, WriteConcern.NORMAL).getLastError();
+                if (result.ok()) {
+                    String errorMessage = result.getErrorMessage();
+                    if (errorMessage != null) {
+                        logger.error("can't upsert documents with error: {} ", errorMessage);
+                        logger.error("with exception", result.getException());
+                        throw new MongoException(errorMessage);
+                    }
+                } else {
+                    logger.error("can't get last error");
+                }
+            }
+        }
     }
 
     private void processEvent(Map<String, List<DBObject>> eventMap, Event event) {
