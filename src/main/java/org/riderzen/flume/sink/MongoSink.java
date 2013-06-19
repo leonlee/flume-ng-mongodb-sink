@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Time: 下午3:31
  */
 public class MongoSink extends AbstractSink implements Configurable {
-    public static final String OP_SET = "$set";
     private static Logger logger = LoggerFactory.getLogger(MongoSink.class);
 
     private static DateTimeParser[] parsers = {
@@ -54,6 +53,8 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String TIMESTAMP_FIELD = "timestampField";
     public static final String OPERATION = "op";
     public static final String PK = "_id";
+    public static final String OP_INC = "$inc";
+    public static final String OP_SET = "$set";
 
     public static final boolean DEFAULT_AUTHENTICATION_ENABLED = false;
     public static final String DEFAULT_HOST = "localhost";
@@ -263,7 +264,17 @@ public class MongoSink extends AbstractSink implements Configurable {
             }
             DBCollection collection = db.getCollection(collectionName);
             for (DBObject doc : docs) {
-                DBObject query = BasicDBObjectBuilder.start().add(PK, doc.removeField(PK)).get();
+                if (logger.isDebugEnabled()) {
+                    logger.debug("doc: {}", doc);
+                }
+                DBObject query = BasicDBObjectBuilder.start().add(PK, doc.get(PK)).get();
+
+                if (doc.keySet().contains(OP_INC) || doc.keySet().contains(OP_SET)) {
+                    doc = BasicDBObjectBuilder.start()
+                            .add(OP_INC, doc.get(OP_INC))
+                            .add(OP_SET, doc.get(OP_SET)).get();
+                }
+
                 CommandResult result = collection.update(query, doc, true, false, WriteConcern.NORMAL).getLastError();
                 if (result.ok()) {
                     String errorMessage = result.getErrorMessage();
@@ -342,8 +353,7 @@ public class MongoSink extends AbstractSink implements Configurable {
                 return documents;
             }
         }
-
-        if (timestampField != null) {
+        if (!event.getHeaders().containsKey(OPERATION) && timestampField != null) {
             Date timestamp;
             if (eventJson.containsField(timestampField)) {
                 try {

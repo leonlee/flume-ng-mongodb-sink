@@ -2,13 +2,14 @@ package org.riderzen.flume.sink;
 
 import com.mongodb.*;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.time.DateUtils;
 import org.apache.flume.*;
 import org.apache.flume.channel.MemoryChannel;
 import org.apache.flume.conf.Configurables;
 import org.apache.flume.event.EventBuilder;
 import org.json.simple.JSONObject;
-import org.testng.annotations.*;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 import java.net.UnknownHostException;
 import java.text.ParseException;
@@ -417,5 +418,121 @@ public class MongoSinkTest {
             System.out.println("ts = " + dbObject.get(tsField));
         }
 
+    }
+
+    @Test(groups = "dev")
+    public void upsertTest() throws EventDeliveryException, ParseException {
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        String tsField = "createdOn";
+        ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
+        MongoSink sink = new MongoSink();
+        Configurables.configure(sink, ctx);
+
+        sink.setChannel(channel);
+        sink.start();
+
+        JSONObject msg = new JSONObject();
+        msg.put("age", 11);
+        msg.put("birthday", new Date().getTime());
+        String dateText = "2013-02-19T14:20:53+08:00";
+        msg.put(tsField, dateText);
+
+        Transaction tx;
+
+        for (int i = 0; i < 10; i++) {
+            tx = channel.getTransaction();
+            tx.begin();
+            msg.put("_id", 1111 + i);
+            msg.put("name", "test" + i);
+            JSONObject header = new JSONObject();
+            header.put(MongoSink.COLLECTION, "my_events");
+            header.put(MongoSink.DB_NAME, "dynamic_db");
+
+            Event e = EventBuilder.withBody(msg.toJSONString().getBytes(), header);
+            channel.put(e);
+            tx.commit();
+            tx.close();
+        }
+        sink.process();
+        sink.stop();
+
+        for (int i = 0; i < 10; i++) {
+            tx = channel.getTransaction();
+            tx.begin();
+            msg.put("_id", 1111 + i);
+            msg.put("name", "test" + i * 10);
+            JSONObject header = new JSONObject();
+            header.put(MongoSink.COLLECTION, "my_events");
+            header.put(MongoSink.DB_NAME, "dynamic_db");
+            header.put(MongoSink.OPERATION, MongoSink.OP_UPSERT);
+
+            Event e = EventBuilder.withBody(msg.toJSONString().getBytes(), header);
+            channel.put(e);
+            tx.commit();
+            tx.close();
+        }
+        sink.process();
+        sink.stop();
+
+        msg.put(tsField, MongoSink.dateTimeFormatter.parseDateTime(dateText).toDate());
+        for (int i = 0; i < 10; i++) {
+            System.out.println("i = " + i);
+
+            DB db = mongo.getDB("dynamic_db");
+            DBCollection collection = db.getCollection("my_events");
+            DBCursor cursor = collection.find(BasicDBObjectBuilder.start().add("_id", 1111 + i).get());
+            assertTrue(cursor.hasNext());
+            DBObject dbObject = cursor.next();
+            assertNotNull(dbObject);
+            assertEquals(dbObject.get("name"), "test" + i * 10);
+            assertEquals(dbObject.get("age"), msg.get("age"));
+            assertEquals(dbObject.get("birthday"), msg.get("birthday"));
+            assertTrue(dbObject.get(tsField) instanceof Date);
+            System.out.println("ts = " + dbObject.get(tsField));
+            System.out.println("_id = " + dbObject.get("_id"));
+        }
+
+    }
+
+    @Test
+    public static void sandbox() throws EventDeliveryException {
+        JSONObject msg = new JSONObject();
+        JSONObject set = new JSONObject();
+        set.put("pid", "274");
+        set.put("fac", "missin-do");
+        msg.put("$set", set);
+
+        JSONObject inc = new JSONObject();
+        inc.put("sum", 1);
+
+        msg.put("$inc", inc);
+        msg.put("_id", "111111111111111111111111111");
+        msg.put("pid", "111111111111111111111111111");
+
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        String tsField = "createdOn";
+        ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
+        MongoSink sink = new MongoSink();
+        Configurables.configure(sink, ctx);
+
+        sink.setChannel(channel);
+        sink.start();
+
+        Transaction tx;
+
+        tx = channel.getTransaction();
+        tx.begin();
+
+        JSONObject header = new JSONObject();
+        header.put(MongoSink.COLLECTION, "my_eventsjj");
+        header.put(MongoSink.DB_NAME, "dynamic_dbjj");
+        header.put(MongoSink.OPERATION, MongoSink.OP_UPSERT);
+
+        Event e = EventBuilder.withBody(msg.toJSONString().getBytes(), header);
+        channel.put(e);
+        tx.commit();
+        tx.close();
+        sink.process();
+        sink.stop();
     }
 }

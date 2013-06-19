@@ -13,7 +13,7 @@
             <class name="test.sample.ParameterTest"/>
         </classes>
     </test>-->
-    <test name="all" thread-count="1" parallel="classes">
+    <test name="all" thread-count="1" parallel="classes" preserve-order="true">
         <groups>
             <run>
                 <include name="unit"/>
