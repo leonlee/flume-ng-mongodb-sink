@@ -1,9 +1,20 @@
 package org.riderzen.flume.sink;
 
-import com.mongodb.*;
-import com.mongodb.util.JSON;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.commons.lang.StringUtils;
-import org.apache.flume.*;
+import org.apache.flume.Channel;
+import org.apache.flume.Context;
+import org.apache.flume.Event;
+import org.apache.flume.EventDeliveryException;
+import org.apache.flume.Transaction;
 import org.apache.flume.conf.Configurable;
 import org.apache.flume.sink.AbstractSink;
 import org.joda.time.format.DateTimeFormat;
@@ -13,9 +24,16 @@ import org.joda.time.format.DateTimeParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.UnknownHostException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import com.mongodb.BasicDBObject;
+import com.mongodb.BasicDBObjectBuilder;
+import com.mongodb.CommandResult;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
+import com.mongodb.Mongo;
+import com.mongodb.MongoException;
+import com.mongodb.WriteConcern;
+import com.mongodb.util.JSON;
 
 /**
  * User: guoqiang.li
@@ -67,6 +85,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String DEFAULT_TIMESTAMP_FIELD = null;
     public static final char NAMESPACE_SEPARATOR = '.';
     public static final String OP_UPSERT = "upsert";
+    public static final String EXTRA_FIELDS_PREFIX = "extraFields.";
 
     private static AtomicInteger counter = new AtomicInteger();
 
@@ -85,7 +104,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     private boolean autoWrap;
     private String wrapField;
     private String timestampField;
-
+    private final Map<String, String> extraInfos = new ConcurrentHashMap<String, String>();
     @Override
     public void configure(Context context) {
         setName(NAME_PREFIX + counter.getAndIncrement());
@@ -107,6 +126,7 @@ public class MongoSink extends AbstractSink implements Configurable {
         autoWrap = context.getBoolean(AUTO_WRAP, DEFAULT_AUTO_WRAP);
         wrapField = context.getString(WRAP_FIELD, DEFAULT_WRAP_FIELD);
         timestampField = context.getString(TIMESTAMP_FIELD, DEFAULT_TIMESTAMP_FIELD);
+        extraInfos.putAll(context.getSubProperties(EXTRA_FIELDS_PREFIX));
         logger.info("MongoSink {} context { host:{}, port:{}, authentication_enabled:{}, username:{}, password:{}, model:{}, dbName:{}, collectionName:{}, batch: {}, autoWrap: {}, wrapField: {}, timestampField: {} }",
                 new Object[]{getName(), host, port, authentication_enabled, username, password, model, dbName, collectionName, batchSize, autoWrap, wrapField, timestampField});
     }
@@ -369,6 +389,10 @@ public class MongoSink extends AbstractSink implements Configurable {
                 timestamp = new Date();
             }
             eventJson.put(timestampField, timestamp);
+        }
+        
+        for(String key : extraInfos.keySet()) {
+            eventJson.put(key, extraInfos.get(key));
         }
 
         documents.add(eventJson);
