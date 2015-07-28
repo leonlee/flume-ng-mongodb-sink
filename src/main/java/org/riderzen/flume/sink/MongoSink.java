@@ -172,19 +172,39 @@ public class MongoSink extends AbstractSink implements Configurable {
                     return;
                 }
             }
-            CommandResult result = db.getCollection(collectionName).insert(docs, WriteConcern.NORMAL).getLastError();
-            if (result.ok()) {
-                String errorMessage = result.getErrorMessage();
-                if (errorMessage != null) {
-                    logger.error("can't insert documents with error: {} ", errorMessage);
-                    logger.error("with exception", result.getException());
-                    throw new MongoException(errorMessage);
-                }
-            } else {
-                logger.error("can't get last error");
-            }
-        }
-    }
+			try {
+				CommandResult result = db.getCollection(collectionName)
+						.insert(docs, WriteConcern.SAFE).getLastError();
+				if (result.ok()) {
+					String errorMessage = result.getErrorMessage();
+					if (errorMessage != null) {
+						logger.error("can't insert documents with error: {} ",
+								errorMessage);
+						logger.error("with exception", result.getException());
+						throw new MongoException(errorMessage);
+					}
+				} else {
+					logger.error("can't get last error");
+				}
+			} catch (Exception e) {
+				if (!(e instanceof com.mongodb.MongoException.DuplicateKey)) {
+					logger.error("can't process event batch ", e);
+				    logger.debug("can't process doc:{}", docs);
+				}
+				for (DBObject doc : docs) {
+					try {
+						db.getCollection(collectionName).insert(doc,
+								WriteConcern.SAFE);
+					} catch (Exception ee) {
+						if (!(e instanceof com.mongodb.MongoException.DuplicateKey)) {
+							logger.error(doc.toString());
+							logger.error("can't process events, drop it!", ee);
+						}
+					}
+				}
+			}
+		}
+	}
 
     private Status parseEvents() throws EventDeliveryException {
         Status status = Status.READY;
