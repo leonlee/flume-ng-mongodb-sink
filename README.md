@@ -39,6 +39,7 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
             "yyyy-MM-dd'T'HH:mm:ssz"
             "yyyy-MM-dd'T'HH:mm:ss.SSSz"
     authenticationEnabled: true means login by username/password, false means login without authentication [false]
+    extraFields: use with extra fields to tag the information, for example your ip address, computer name
     username: required when "authenticationEnabled" is true []
     password: required when "authenticationEnabled" is true []
 
@@ -60,6 +61,7 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	agent2.sinks.sink2.model = single
 	agent2.sinks.sink2.collection = events
 	agent2.sinks.sink2.batch = 100
+	agent2.sinks.sink2.extraFields.ip = 192.168.1.1
 	
 	agent2.sinks.sink2.channel = channel2
 	
