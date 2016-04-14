@@ -55,6 +55,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String PK = "_id";
     public static final String OP_INC = "$inc";
     public static final String OP_SET = "$set";
+    public static final String OP_SET_ON_INSERT = "$setOnInsert";
 
     public static final boolean DEFAULT_AUTHENTICATION_ENABLED = false;
     public static final String DEFAULT_HOST = "localhost";
@@ -172,19 +173,39 @@ public class MongoSink extends AbstractSink implements Configurable {
                     return;
                 }
             }
-            CommandResult result = db.getCollection(collectionName).insert(docs, WriteConcern.NORMAL).getLastError();
-            if (result.ok()) {
-                String errorMessage = result.getErrorMessage();
-                if (errorMessage != null) {
-                    logger.error("can't insert documents with error: {} ", errorMessage);
-                    logger.error("with exception", result.getException());
-                    throw new MongoException(errorMessage);
-                }
-            } else {
-                logger.error("can't get last error");
-            }
-        }
-    }
+			try {
+				CommandResult result = db.getCollection(collectionName)
+						.insert(docs, WriteConcern.SAFE).getLastError();
+				if (result.ok()) {
+					String errorMessage = result.getErrorMessage();
+					if (errorMessage != null) {
+						logger.error("can't insert documents with error: {} ",
+								errorMessage);
+						logger.error("with exception", result.getException());
+						throw new MongoException(errorMessage);
+					}
+				} else {
+					logger.error("can't get last error");
+				}
+			} catch (Exception e) {
+				if (!(e instanceof com.mongodb.MongoException.DuplicateKey)) {
+					logger.error("can't process event batch ", e);
+				    logger.debug("can't process doc:{}", docs);
+				}
+				for (DBObject doc : docs) {
+					try {
+						db.getCollection(collectionName).insert(doc,
+								WriteConcern.SAFE);
+					} catch (Exception ee) {
+						if (!(e instanceof com.mongodb.MongoException.DuplicateKey)) {
+							logger.error(doc.toString());
+							logger.error("can't process events, drop it!", ee);
+						}
+					}
+				}
+			}
+		}
+	}
 
     private Status parseEvents() throws EventDeliveryException {
         Status status = Status.READY;
@@ -263,30 +284,39 @@ public class MongoSink extends AbstractSink implements Configurable {
                 }
             }
             DBCollection collection = db.getCollection(collectionName);
-            for (DBObject doc : docs) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("doc: {}", doc);
-                }
-                DBObject query = BasicDBObjectBuilder.start().add(PK, doc.get(PK)).get();
-
-                if (doc.keySet().contains(OP_INC) || doc.keySet().contains(OP_SET)) {
-                    doc = BasicDBObjectBuilder.start()
-                            .add(OP_INC, doc.get(OP_INC))
-                            .add(OP_SET, doc.get(OP_SET)).get();
-                }
-
-                CommandResult result = collection.update(query, doc, true, false, WriteConcern.NORMAL).getLastError();
-                if (result.ok()) {
-                    String errorMessage = result.getErrorMessage();
-                    if (errorMessage != null) {
-                        logger.error("can't upsert documents with error: {} ", errorMessage);
-                        logger.error("with exception", result.getException());
-                        throw new MongoException(errorMessage);
-                    }
-                } else {
-                    logger.error("can't get last error");
-                }
-            }
+	    for (DBObject doc : docs) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("doc: {}", doc);
+		}
+		DBObject query = BasicDBObjectBuilder.start()
+				.add(PK, doc.get(PK)).get();
+		BasicDBObjectBuilder doc_builder = BasicDBObjectBuilder.start();
+		if (doc.keySet().contains(OP_INC)) {
+			doc_builder.add(OP_INC, doc.get(OP_INC));
+		}
+		if (doc.keySet().contains(OP_SET)) {
+			doc_builder.add(OP_SET, doc.get(OP_SET));
+		}
+		if (doc.keySet().contains(OP_SET_ON_INSERT)) {
+			doc_builder.add(OP_SET_ON_INSERT, doc.get(OP_SET_ON_INSERT));
+		}
+		doc = doc_builder.get();
+		//logger.debug("query: {}", query);
+		//logger.debug("new doc: {}", doc);
+		CommandResult result = collection.update(query, doc, true,
+				false, WriteConcern.SAFE).getLastError();
+		if (result.ok()) {
+			String errorMessage = result.getErrorMessage();
+			if (errorMessage != null) {
+				logger.error("can't upsert documents with error: {} ",
+						errorMessage);
+				logger.error("with exception", result.getException());
+				throw new MongoException(errorMessage);
+			}
+		} else {
+		    logger.error("can't get last error");
+		}
+	    }
         }
     }
 
