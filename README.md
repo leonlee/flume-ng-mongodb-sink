@@ -18,13 +18,13 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	port: db port [27017]
 	username: db username []
 	password: db password []
-	model: single or dynamic, single mean all data will insert into the same collection,
-	    and dynamic means every event will specify cllection name by event header 'collection' [single]
+	model: single or dynamic [single], single means all data will insert into the same collection,
+	    and dynamic means every event will specify collection name by event header 'collection' 
 	db: db name [events]
 	collection: default collection name, will used in single model [events]
 	batch: batch size of insert opertion [100]
 	autoWrap: indicator of wrap the event body as a JSONObject that has one field [false]
-	wrapField: use with autoWrap, set the field name of JSONObject [log]
+	wrapField: using with autoWrap, set the field name of JSONObject [log]
 	timestampField: date type field that record the creating time of record,
 	    it can be a existing filed name that the sink will convert this filed to date type,
 	    or it's a new filed name that the sink will create it automatically []
@@ -39,7 +39,7 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
             "yyyy-MM-dd'T'HH:mm:ssz"
             "yyyy-MM-dd'T'HH:mm:ss.SSSz"
     authenticationEnabled: true means login by username/password, false means login without authentication [false]
-    extraFields: use with extra fields to tag the information, for example your ip address, computer name
+    extraFields: use with extra fields to tag the information, for example your ip address, computer name[]
     username: required when "authenticationEnabled" is true []
     password: required when "authenticationEnabled" is true []
 
