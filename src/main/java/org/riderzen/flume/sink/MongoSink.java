@@ -175,14 +175,14 @@ public class MongoSink extends AbstractSink implements Configurable {
             return;
         }
 
-        for (String eventCollection : eventMap.keySet()) {
-            List<DBObject> docs = eventMap.get(eventCollection);
+        for (Map.Entry<String, List<DBObject>> entry : eventMap.entrySet()) {
+            List<DBObject> docs = entry.getValue();
             if (logger.isDebugEnabled()) {
-                logger.debug("collection: {}, length: {}", eventCollection, docs.size());
+                logger.debug("collection: {}, length: {}", entry.getKey(), docs.size());
             }
-            int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
-            String eventDb = eventCollection.substring(0, separatorIndex);
-            String collectionName = eventCollection.substring(separatorIndex + 1);
+            int separatorIndex = entry.getKey().indexOf(NAMESPACE_SEPARATOR);
+            String eventDb = entry.getKey().substring(0, separatorIndex);
+            String collectionName = entry.getKey().substring(separatorIndex + 1);
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
             DB db = mongo.getDB(eventDb);
@@ -285,14 +285,14 @@ public class MongoSink extends AbstractSink implements Configurable {
             return;
         }
 
-        for (String eventCollection : eventMap.keySet()) {
-            List<DBObject> docs = eventMap.get(eventCollection);
+        for (Map.Entry<String, List<DBObject>> entry : eventMap.entrySet()) {
+            List<DBObject> docs = entry.getValue();
             if (logger.isDebugEnabled()) {
-                logger.debug("collection: {}, length: {}", eventCollection, docs.size());
+                logger.debug("collection: {}, length: {}", entry.getKey(), docs.size());
             }
-            int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
-            String eventDb = eventCollection.substring(0, separatorIndex);
-            String collectionName = eventCollection.substring(separatorIndex + 1);
+            int separatorIndex = entry.getKey().indexOf(NAMESPACE_SEPARATOR);
+            String eventDb = entry.getKey().substring(0, separatorIndex);
+            String collectionName = entry.getKey().substring(separatorIndex + 1);
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
             DB db = mongo.getDB(eventDb);
@@ -421,8 +421,8 @@ public class MongoSink extends AbstractSink implements Configurable {
             eventJson.put(timestampField, timestamp);
         }
         
-        for(String key : extraInfos.keySet()) {
-            eventJson.put(key, extraInfos.get(key));
+        for(Map.Entry<String, String> entry : extraInfos.entrySet()) {
+            eventJson.put(entry.getKey(), entry.getValue());
         }
 
         documents.add(eventJson);
