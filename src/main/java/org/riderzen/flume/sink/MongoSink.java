@@ -182,19 +182,19 @@ public class MongoSink extends AbstractSink implements Configurable {
             }
             int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
             String eventDb = eventCollection.substring(0, separatorIndex);
-            String collectionName = eventCollection.substring(separatorIndex + 1);
+            String collectionNameVar = eventCollection.substring(separatorIndex + 1);
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
-            DB db = mongo.getDB(eventDb);
+            DB dbRef = mongo.getDB(eventDb);
             if (authentication_enabled) {
-                boolean authResult = db.authenticate(username, password.toCharArray());
+                boolean authResult = dbRef.authenticate(username, password.toCharArray());
                 if (!authResult) {
                     logger.error("Failed to authenticate user: " + username + " with password: " + password + ". Unable to write events.");
                     return;
                 }
             }
 			try {
-				CommandResult result = db.getCollection(collectionName)
+				CommandResult result = dbRef.getCollection(collectionNameVar)
 						.insert(docs, WriteConcern.SAFE).getLastError();
 				if (result.ok()) {
 					String errorMessage = result.getErrorMessage();
@@ -214,7 +214,7 @@ public class MongoSink extends AbstractSink implements Configurable {
 				}
 				for (DBObject doc : docs) {
 					try {
-						db.getCollection(collectionName).insert(doc,
+						dbRef.getCollection(collectionNameVar).insert(doc,
 								WriteConcern.SAFE);
 					} catch (Exception ee) {
 						if (!(e instanceof com.mongodb.MongoException.DuplicateKey)) {
@@ -292,18 +292,18 @@ public class MongoSink extends AbstractSink implements Configurable {
             }
             int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
             String eventDb = eventCollection.substring(0, separatorIndex);
-            String collectionName = eventCollection.substring(separatorIndex + 1);
+            String collectionNameVar = eventCollection.substring(separatorIndex + 1);
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
-            DB db = mongo.getDB(eventDb);
+            DB dbRef = mongo.getDB(eventDb);
             if (authentication_enabled) {
-                boolean authResult = db.authenticate(username, password.toCharArray());
+                boolean authResult = dbRef.authenticate(username, password.toCharArray());
                 if (!authResult) {
                     logger.error("Failed to authenticate user: " + username + " with password: " + password + ". Unable to write events.");
                     return;
                 }
             }
-            DBCollection collection = db.getCollection(collectionName);
+            DBCollection collection = dbRef.getCollection(collectionNameVar);
 	    for (DBObject doc : docs) {
 		if (logger.isDebugEnabled()) {
 			logger.debug("doc: {}", doc);
