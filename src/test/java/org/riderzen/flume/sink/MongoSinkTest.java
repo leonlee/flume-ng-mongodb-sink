@@ -61,7 +61,7 @@ public class MongoSinkTest {
 
     @Test(groups = "dev", invocationCount = 1)
     public void sinkDynamicTest() throws EventDeliveryException, InterruptedException {
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.DYNAMIC.name());
         MongoSink sink = new MongoSink();
         Configurables.configure(sink, ctx);
 
@@ -108,7 +108,7 @@ public class MongoSinkTest {
 
     @Test(groups = "dev")
     public void sinkDynamicTest2() throws EventDeliveryException, InterruptedException {
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.DYNAMIC.name());
         MongoSink sink = new MongoSink();
         Configurables.configure(sink, ctx);
 
@@ -155,7 +155,7 @@ public class MongoSinkTest {
 
     @Test(groups = "dev")
     public void sinkSingleModelTest() throws EventDeliveryException {
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.single.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.SINGLE.name());
 
         MongoSink sink = new MongoSink();
         Configurables.configure(sink, ctx);
@@ -265,7 +265,7 @@ public class MongoSinkTest {
 
     @Test(groups = "dev")
     public void sinkDynamicDbTest() throws EventDeliveryException {
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.DYNAMIC.name());
         MongoSink sink = new MongoSink();
         Configurables.configure(sink, ctx);
 
@@ -314,7 +314,7 @@ public class MongoSinkTest {
 
     @Test(groups = "dev")
     public void timestampNewFieldTest() throws EventDeliveryException {
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.DYNAMIC.name());
         String tsField = "createdOn";
         ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
         MongoSink sink = new MongoSink();
@@ -366,7 +366,7 @@ public class MongoSinkTest {
 
     @Test(groups = "dev")
     public void timestampExistingFieldTest() throws EventDeliveryException, ParseException {
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.DYNAMIC.name());
         String tsField = "createdOn";
         ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
         MongoSink sink = new MongoSink();
@@ -422,7 +422,7 @@ public class MongoSinkTest {
 
     @Test(groups = "dev")
     public void upsertTest() throws EventDeliveryException, ParseException {
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.DYNAMIC.name());
         String tsField = "createdOn";
         ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
         MongoSink sink = new MongoSink();
@@ -509,7 +509,7 @@ public class MongoSinkTest {
         msg.put("_id", "111111111111111111111111111");
         msg.put("pid", "111111111111111111111111111");
 
-        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.dynamic.name());
+        ctx.put(MongoSink.MODEL, MongoSink.CollectionModel.DYNAMIC.name());
         String tsField = "createdOn";
         ctx.put(MongoSink.TIMESTAMP_FIELD, tsField);
         MongoSink sink = new MongoSink();
