@@ -120,7 +120,7 @@ public class MongoSink extends AbstractSink implements Configurable {
             username = "";
             password = "";
         }
-        model = CollectionModel.valueOf(context.getString(MODEL, CollectionModel.single.name()));
+        model = CollectionModel.valueOf(context.getString(MODEL, CollectionModel.SINGLE.name()));
         dbName = context.getString(DB_NAME, DEFAULT_DB);
         collectionName = context.getString(COLLECTION, DEFAULT_COLLECTION);
         batchSize = context.getInteger(BATCH_SIZE, DEFAULT_BATCH);
@@ -342,11 +342,11 @@ public class MongoSink extends AbstractSink implements Configurable {
 
     private void processEvent(Map<String, List<DBObject>> eventMap, Event event) {
         switch (model) {
-            case single:
+            case SINGLE:
                 putSingleEvent(eventMap, event);
 
                 break;
-            case dynamic:
+            case DYNAMIC:
                 putDynamicEvent(eventMap, event);
 
                 break;
@@ -430,7 +430,7 @@ public class MongoSink extends AbstractSink implements Configurable {
         return documents;
     }
 
-    public static enum CollectionModel {
-        dynamic, single
+    public enum CollectionModel {
+        DYNAMIC, SINGLE
     }
 }
