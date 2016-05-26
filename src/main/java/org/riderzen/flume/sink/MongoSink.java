@@ -120,7 +120,7 @@ public class MongoSink extends AbstractSink implements Configurable {
             username = "";
             password = "";
         }
-        model = CollectionModel.valueOf(context.getString(MODEL, CollectionModel.single.name()));
+        model = CollectionModel.valueOf(context.getString(MODEL, CollectionModel.SINGLE.name()));
         dbName = context.getString(DB_NAME, DEFAULT_DB);
         collectionName = context.getString(COLLECTION, DEFAULT_COLLECTION);
         batchSize = context.getInteger(BATCH_SIZE, DEFAULT_BATCH);
@@ -175,14 +175,14 @@ public class MongoSink extends AbstractSink implements Configurable {
             return;
         }
 
-        for (String eventCollection : eventMap.keySet()) {
-            List<DBObject> docs = eventMap.get(eventCollection);
+        for (Map.Entry<String, List<DBObject>> entry : eventMap.entrySet()) {
+            List<DBObject> docs = entry.getValue();
             if (logger.isDebugEnabled()) {
-                logger.debug("collection: {}, length: {}", eventCollection, docs.size());
+                logger.debug("collection: {}, length: {}", entry.getKey(), docs.size());
             }
-            int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
-            String eventDb = eventCollection.substring(0, separatorIndex);
-            String collectionNameVar = eventCollection.substring(separatorIndex + 1);
+            int separatorIndex = entry.getKey().indexOf(NAMESPACE_SEPARATOR);
+            String eventDb = entry.getKey().substring(0, separatorIndex);
+            String collectionNameVar = entry.getKey().substring(separatorIndex + 1);
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
             DB dbRef = mongo.getDB(eventDb);
@@ -285,14 +285,20 @@ public class MongoSink extends AbstractSink implements Configurable {
             return;
         }
 
-        for (String eventCollection : eventMap.keySet()) {
-            List<DBObject> docs = eventMap.get(eventCollection);
+        for (Map.Entry<String, List<DBObject>> entry : eventMap.entrySet()) {
+            List<DBObject> docs = entry.getValue();
             if (logger.isDebugEnabled()) {
-                logger.debug("collection: {}, length: {}", eventCollection, docs.size());
+                logger.debug("collection: {}, length: {}", entry.getKey(), docs.size());
             }
+<<<<<<< HEAD
             int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
             String eventDb = eventCollection.substring(0, separatorIndex);
             String collectionNameVar = eventCollection.substring(separatorIndex + 1);
+=======
+            int separatorIndex = entry.getKey().indexOf(NAMESPACE_SEPARATOR);
+            String eventDb = entry.getKey().substring(0, separatorIndex);
+            String collectionName = entry.getKey().substring(separatorIndex + 1);
+>>>>>>> master
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
             DB dbRef = mongo.getDB(eventDb);
@@ -342,11 +348,11 @@ public class MongoSink extends AbstractSink implements Configurable {
 
     private void processEvent(Map<String, List<DBObject>> eventMap, Event event) {
         switch (model) {
-            case single:
+            case SINGLE:
                 putSingleEvent(eventMap, event);
 
                 break;
-            case dynamic:
+            case DYNAMIC:
                 putDynamicEvent(eventMap, event);
 
                 break;
@@ -421,8 +427,8 @@ public class MongoSink extends AbstractSink implements Configurable {
             eventJson.put(timestampField, timestamp);
         }
         
-        for(String key : extraInfos.keySet()) {
-            eventJson.put(key, extraInfos.get(key));
+        for(Map.Entry<String, String> entry : extraInfos.entrySet()) {
+            eventJson.put(entry.getKey(), entry.getValue());
         }
 
         documents.add(eventJson);
@@ -430,7 +436,7 @@ public class MongoSink extends AbstractSink implements Configurable {
         return documents;
     }
 
-    public static enum CollectionModel {
-        dynamic, single
+    public enum CollectionModel {
+        DYNAMIC, SINGLE
     }
 }
