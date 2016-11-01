@@ -290,15 +290,10 @@ public class MongoSink extends AbstractSink implements Configurable {
             if (logger.isDebugEnabled()) {
                 logger.debug("collection: {}, length: {}", entry.getKey(), docs.size());
             }
-<<<<<<< HEAD
-            int separatorIndex = eventCollection.indexOf(NAMESPACE_SEPARATOR);
-            String eventDb = eventCollection.substring(0, separatorIndex);
-            String collectionNameVar = eventCollection.substring(separatorIndex + 1);
-=======
+
             int separatorIndex = entry.getKey().indexOf(NAMESPACE_SEPARATOR);
             String eventDb = entry.getKey().substring(0, separatorIndex);
             String collectionName = entry.getKey().substring(separatorIndex + 1);
->>>>>>> master
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
             DB dbRef = mongo.getDB(eventDb);
@@ -309,7 +304,7 @@ public class MongoSink extends AbstractSink implements Configurable {
                     return;
                 }
             }
-            DBCollection collection = dbRef.getCollection(collectionNameVar);
+            DBCollection collection = dbRef.getCollection(collectionName);
 	    for (DBObject doc : docs) {
 		if (logger.isDebugEnabled()) {
 			logger.debug("doc: {}", doc);
@@ -411,11 +406,11 @@ public class MongoSink extends AbstractSink implements Configurable {
         }
         if (!event.getHeaders().containsKey(OPERATION) && timestampField != null) {
             Date timestamp;
-            if (eventJson.containsField(timestampField)) {
+            if (eventJson.containsField(TIMESTAMP_FIELD)) {
                 try {
-                    String dateText = (String) eventJson.get(timestampField);
+                    String dateText = (String) eventJson.get(TIMESTAMP_FIELD);
                     timestamp = dateTimeFormatter.parseDateTime(dateText).toDate();
-                    eventJson.removeField(timestampField);
+                    eventJson.removeField(TIMESTAMP_FIELD);
                 } catch (Exception e) {
                     logger.error("can't parse date ", e);
 
@@ -424,7 +419,7 @@ public class MongoSink extends AbstractSink implements Configurable {
             } else {
                 timestamp = new Date();
             }
-            eventJson.put(timestampField, timestamp);
+            eventJson.put(TIMESTAMP_FIELD, timestamp);
         }
         
         for(Map.Entry<String, String> entry : extraInfos.entrySet()) {
