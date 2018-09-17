@@ -18,10 +18,10 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	port: db port [27017]
 	username: db username []
 	password: db password []
-	model: single or dynamic [single], single means all data will insert into the same collection,
-	    and dynamic means every event will specify collection name by event header 'collection' 
+	model: SINGLE or DYNAMIC [SINGLE], SINGLE means all data will insert into the same collection,
+	    and DYNAMIC means every event will specify collection name by event header 'collection' 
 	db: db name [events]
-	collection: default collection name, will used in single model [events]
+	collection: default collection name, will used in SINGLE model [events]
 	batch: batch size of insert opertion [100]
 	autoWrap: indicator of wrap the event body as a JSONObject that has one field [false]
 	wrapField: using with autoWrap, set the field name of JSONObject [log]
@@ -58,7 +58,7 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	agent2.sinks.sink2.type = org.riderzen.flume.sink.MongoSink
 	agent2.sinks.sink2.host = localhost
 	agent2.sinks.sink2.port = 27017
-	agent2.sinks.sink2.model = single
+	agent2.sinks.sink2.model = SINGLE
 	agent2.sinks.sink2.collection = events
 	agent2.sinks.sink2.batch = 100
 	agent2.sinks.sink2.extraFields.ip = 192.168.1.1
@@ -71,6 +71,6 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
 	agent2.channels.channel2.keep-alive = 3
 
 ### Event Headers
-    The sink supports some headers in dynamic model:
+    The sink supports some headers in DYNAMIC model:
     'db': db name
     'collection' : collection name
