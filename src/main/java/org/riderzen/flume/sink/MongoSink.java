@@ -34,6 +34,7 @@ import com.mongodb.Mongo;
 import com.mongodb.MongoException;
 import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
+import com.mongodb.MongoURI;
 
 /**
  * User: guoqiang.li
@@ -63,6 +64,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String PASSWORD = "password";
     public static final String MODEL = "model";
     public static final String DB_NAME = "db";
+    public static final String AUTH_SOURCE = "authSource";
     public static final String COLLECTION = "collection";
     public static final String NAME_PREFIX = "MongSink_";
     public static final String BATCH_SIZE = "batch";
@@ -79,6 +81,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     public static final String DEFAULT_HOST = "localhost";
     public static final int DEFAULT_PORT = 27017;
     public static final String DEFAULT_DB = "events";
+    public static final String DEFAULT_AUTH_SOURCE = "";
     public static final String DEFAULT_COLLECTION = "events";
     public static final int DEFAULT_BATCH = 100;
     private static final Boolean DEFAULT_AUTO_WRAP = false;
@@ -92,6 +95,7 @@ public class MongoSink extends AbstractSink implements Configurable {
 
     private Mongo mongo;
     private DB db;
+    private DB authDB;
 
     private String host;
     private int port;
@@ -100,6 +104,7 @@ public class MongoSink extends AbstractSink implements Configurable {
     private String password;
     private CollectionModel model;
     private String dbName;
+    private String authSource;
     private String collectionName;
     private int batchSize;
     private boolean autoWrap;
@@ -122,6 +127,7 @@ public class MongoSink extends AbstractSink implements Configurable {
         }
         model = CollectionModel.valueOf(context.getString(MODEL, CollectionModel.SINGLE.name()));
         dbName = context.getString(DB_NAME, DEFAULT_DB);
+        authSource = context.getString(AUTH_SOURCE, DEFAULT_AUTH_SOURCE);
         collectionName = context.getString(COLLECTION, DEFAULT_COLLECTION);
         batchSize = context.getInteger(BATCH_SIZE, DEFAULT_BATCH);
         autoWrap = context.getBoolean(AUTO_WRAP, DEFAULT_AUTO_WRAP);
@@ -143,7 +149,13 @@ public class MongoSink extends AbstractSink implements Configurable {
             return;
         }
         if (authentication_enabled) {
-            boolean result = db.authenticate(username, password.toCharArray());
+            boolean result = false;
+            if (authSource.length()>0) {
+                authDB = mongo.getDB(authSource);
+                result = authDB.authenticate(username, password.toCharArray());
+            } else {
+                result = db.authenticate(username, password.toCharArray());
+            }
             if (result) {
                 logger.info("Authentication attempt successful.");
             } else {
@@ -186,7 +198,7 @@ public class MongoSink extends AbstractSink implements Configurable {
 
             //Warning: please change the WriteConcern level if you need high datum consistence.
             DB dbRef = mongo.getDB(eventDb);
-            if (authentication_enabled) {
+            if (authentication_enabled && authSource.length()<=0) {
                 boolean authResult = dbRef.authenticate(username, password.toCharArray());
                 if (!authResult) {
                     logger.error("Failed to authenticate user: " + username + " with password: " + password + ". Unable to write events.");
@@ -421,7 +433,7 @@ public class MongoSink extends AbstractSink implements Configurable {
             }
             eventJson.put(TIMESTAMP_FIELD, timestamp);
         }
-        
+
         for(Map.Entry<String, String> entry : extraInfos.entrySet()) {
             eventJson.put(entry.getKey(), entry.getValue());
         }

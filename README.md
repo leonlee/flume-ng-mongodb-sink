@@ -42,6 +42,7 @@ Flume NG MongoDB sink. The source was implemented to populate JSON into MongoDB.
     extraFields: use with extra fields to tag the information, for example your ip address, computer name[]
     username: required when "authenticationEnabled" is true []
     password: required when "authenticationEnabled" is true []
+    authSource: optional when "authenticationEnabled" is true [] and auth db name is difference from db name
 
 ### flume.conf sample
 - - -
